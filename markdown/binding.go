@@ -94,8 +94,6 @@ func ParseCtx(ctx context.Context, oldTree *MarkdownTree, content []byte) (*Mark
 		inlineIndices: map[uintptr]int{},
 	}
 
-	treeCursor := sitter.NewTreeCursor(tree.RootNode())
-
 	p.SetLanguage(tree_sitter_markdown_inline.GetLanguage())
 
 	q, err := sitter.NewQuery([]byte(`(inline) @inline`), tree_sitter_markdown.GetLanguage())
@@ -114,7 +112,24 @@ func ParseCtx(ctx context.Context, oldTree *MarkdownTree, content []byte) (*Mark
 		}
 
 		for _, capture := range match.Captures {
-			p.SetIncludedRanges([]sitter.Range{capture.Node.Range()})
+			r := capture.Node.Range()
+			ranges := []sitter.Range{}
+			for i := 0; i < int(capture.Node.NamedChildCount()); i++ {
+				child := capture.Node.NamedChild(i)
+				childRange := child.Range()
+				ranges = append(ranges, sitter.Range{
+					StartPoint: r.StartPoint,
+					StartByte:  r.StartByte,
+					EndPoint:   childRange.EndPoint,
+					EndByte:    childRange.EndByte,
+				})
+
+				r.StartPoint = childRange.EndPoint
+				r.StartByte = childRange.EndByte
+			}
+
+			ranges = append(ranges, r)
+			p.SetIncludedRanges(ranges)
 			var old *sitter.Tree
 			if oldTree != nil && idx < len(oldTree.inlineTrees) {
 				old = oldTree.inlineTrees[idx]
@@ -130,6 +145,7 @@ func ParseCtx(ctx context.Context, oldTree *MarkdownTree, content []byte) (*Mark
 			idx++
 		}
 	}
+	qc.Close()
 
 	return res, nil
 }
