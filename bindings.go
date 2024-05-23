@@ -405,6 +405,10 @@ func (t SymbolType) String() string {
 	return symbolTypeNames[t]
 }
 
+func (n Node) ID() uintptr {
+	return uintptr(n.c.id)
+}
+
 // StartByte returns the node's start byte.
 func (n Node) StartByte() uint32 {
 	return uint32(C.ts_node_start_byte(n.c))
