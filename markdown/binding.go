@@ -62,9 +62,9 @@ func (t *MarkdownTree) iter(node *Node, f func(node *Node) bool) {
 		return
 	}
 
-	childCount := node.ChildCount()
+	childCount := node.NamedChildCount()
 	for i := 0; i < int(childCount); i++ {
-		child := node.Child(i)
+		child := node.NamedChild(i)
 
 		t.iter(&Node{Node: child, Inline: t.InlineRootNode(child)}, f)
 	}
