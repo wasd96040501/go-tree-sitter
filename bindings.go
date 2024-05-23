@@ -437,6 +437,15 @@ func (n Node) EndPoint() Point {
 	}
 }
 
+func (n Node) Range() Range {
+	return Range{
+		StartByte:  n.StartByte(),
+		EndByte:    n.EndByte(),
+		StartPoint: n.StartPoint(),
+		EndPoint:   n.EndPoint(),
+	}
+}
+
 // Symbol returns the node's type as a Symbol.
 func (n Node) Symbol() Symbol {
 	return C.ts_node_symbol(n.c)

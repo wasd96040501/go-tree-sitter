@@ -4,6 +4,8 @@ import (
 	"context"
 
 	sitter "github.com/smacker/go-tree-sitter"
+	tree_sitter_markdown "github.com/smacker/go-tree-sitter/markdown/tree-sitter-markdown"
+	tree_sitter_markdown_inline "github.com/smacker/go-tree-sitter/markdown/tree-sitter-markdown-inline"
 )
 
 type MarkdownTree struct {
@@ -73,6 +75,61 @@ type Node struct {
 	Inline *sitter.Node
 }
 
-func ParseCtx(ctx context.Context, oldTree *MarkdownTree, content []byte) *MarkdownTree {
-	return nil
+func ParseCtx(ctx context.Context, oldTree *MarkdownTree, content []byte) (*MarkdownTree, error) {
+	p := sitter.NewParser()
+	p.SetLanguage(tree_sitter_markdown.GetLanguage())
+
+	var old *sitter.Tree
+	if oldTree != nil {
+		old = oldTree.blockTree
+	}
+	tree, err := p.ParseCtx(ctx, old, content)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &MarkdownTree{
+		blockTree:     tree,
+		inlineTrees:   []*sitter.Tree{},
+		inlineIndices: map[uintptr]int{},
+	}
+
+	treeCursor := sitter.NewTreeCursor(tree.RootNode())
+
+	p.SetLanguage(tree_sitter_markdown_inline.GetLanguage())
+
+	q, err := sitter.NewQuery([]byte(`(inline) @inline`), tree_sitter_markdown.GetLanguage())
+	if err != nil {
+		return nil, err
+	}
+
+	qc := sitter.NewQueryCursor()
+	qc.Exec(q, tree.RootNode())
+
+	idx := int(0)
+	for {
+		match, ok := qc.NextMatch()
+		if !ok {
+			break
+		}
+
+		for _, capture := range match.Captures {
+			p.SetIncludedRanges([]sitter.Range{capture.Node.Range()})
+			var old *sitter.Tree
+			if oldTree != nil && idx < len(oldTree.inlineTrees) {
+				old = oldTree.inlineTrees[idx]
+			}
+
+			inlineTree, err := p.ParseCtx(ctx, old, content)
+			if err != nil {
+				return nil, err
+			}
+
+			res.inlineTrees = append(res.inlineTrees, inlineTree)
+			res.inlineIndices[capture.Node.ID()] = idx
+			idx++
+		}
+	}
+
+	return res, nil
 }
