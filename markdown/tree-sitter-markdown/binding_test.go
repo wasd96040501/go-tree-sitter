@@ -12,10 +12,10 @@ import (
 func TestGrammar(t *testing.T) {
 	assert := assert.New(t)
 
-	n, err := sitter.ParseCtx(context.Background(), []byte("<foo />"), tree_sitter_markdown.GetLanguage())
+	n, err := sitter.ParseCtx(context.Background(), []byte("# Hello world!\n- Here is a picture: ![picture](https://example.com/picture.png)"), tree_sitter_markdown.GetLanguage())
 	assert.NoError(err)
 	assert.Equal(
-		"(program (expression_statement (jsx_self_closing_element name: (identifier))))",
+		"(document (section (atx_heading (atx_h1_marker) heading_content: (inline)) (list (list_item (list_marker_minus) (paragraph (inline))))))",
 		n.String(),
 	)
 }
